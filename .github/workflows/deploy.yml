@@ -1,0 +1,45 @@
+name: Deploy to Cloud
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run basic tests
+      run: |
+        python -c "from main import app; print('✓ App imports successfully')"
+    
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Build Docker image
+      run: docker build -t fast-search-engine .
+    
+    - name: Test Docker image
+      run: |
+        docker run -d -p 8000:8000 --name test-container fast-search-engine
+        sleep 5
+        curl -f http://localhost:8000/ || exit 1
+        docker stop test-container
